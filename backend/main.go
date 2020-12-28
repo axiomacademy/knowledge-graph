@@ -52,6 +52,7 @@ func main() {
 	r.HandleFunc("/", TestHandler).Methods("GET", "OPTIONS")
 	r.HandleFunc("/concept/new", CreateConcept).Methods("POST", "OPTIONS")
 	r.HandleFunc("/concept/around", GetConceptsAround).Methods("GET", "OPTIONS")
+	r.HandleFunc("/concept/search", SearchForConcept).Methods("GET", "OPTIONS")
 
 	// Addings the middlewares
 	r.Use(corsMiddleware)
@@ -99,6 +100,60 @@ func main() {
 //****************************************** Handlers ********************************************************//
 func TestHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("gorilla!\n"))
+}
+
+type searchForConceptRequest struct {
+	QueryString string `json:"query_string"`
+}
+
+type searchForConceptResponse struct {
+	Concept models.Concept `json:"concept"`
+	Score   float64        `json:"score"`
+}
+
+func SearchForConcept(w http.ResponseWriter, r *http.Request) {
+	var req searchForConceptRequest
+	var resArray []searchForConceptResponse
+	err := json.NewDecoder(r.Body).Decode(&req)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	session := driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
+	defer session.Close()
+
+	// var concepts []models.Concept
+
+	results, err := session.Run("CALL db.index.fulltext.queryNodes($querytype, $query) YIELD node, score RETURN node, score",
+		map[string]interface{}{"querytype": "conceptTitles", "query": req.QueryString})
+
+	var record *neo4j.Record
+	for results.NextRecord(&record) {
+		rawNode, _ := record.Get("node")
+		node := rawNode.(neo4j.Node)
+		concept := models.Concept{
+			Uuid:          node.Props["uuid"].(string),
+			Title:         node.Props["title"].(string),
+			Content:       node.Props["content"].(string),
+			Prerequisites: []string{},
+		}
+		score, _ := record.Get("score")
+		resElem := searchForConceptResponse{
+			Concept: concept,
+			Score:   score.(float64),
+		}
+
+		resArray = append(resArray, resElem)
+		res, err := json.Marshal(resArray)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Write(res)
+	}
 }
 
 type getConceptsAroundRequest struct {
