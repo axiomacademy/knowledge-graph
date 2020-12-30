@@ -51,7 +51,8 @@ func main() {
 	r := mux.NewRouter()
 	r.HandleFunc("/", TestHandler).Methods("GET", "OPTIONS")
 	r.HandleFunc("/concept/new", CreateConcept).Methods("POST", "OPTIONS")
-	r.HandleFunc("/concept/around", GetConceptsAround).Methods("GET", "OPTIONS")
+	r.HandleFunc("/concept/update/{uuid}", UpdateConcept).Methods("PUT", "OPTIONS")
+	r.HandleFunc("/concept/all", GetAllConcepts).Methods("GET", "OPTIONS")
 	r.HandleFunc("/concept/search", SearchForConcept).Methods("GET", "OPTIONS")
 
 	// Addings the middlewares
@@ -156,19 +157,9 @@ func SearchForConcept(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-type getConceptsAroundRequest struct {
-	ConceptId string `json:"concept_id"`
-	Depth     int    `json:"depth"`
-}
+func GetAllConcepts(w http.ResponseWriter, r *http.Request) {
 
-func GetConceptsAround(w http.ResponseWriter, r *http.Request) {
-	var req getConceptsAroundRequest
-	err := json.NewDecoder(r.Body).Decode(&req)
-
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+	id := "root"
 
 	session := driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
 	defer session.Close()
@@ -176,31 +167,13 @@ func GetConceptsAround(w http.ResponseWriter, r *http.Request) {
 	var concepts []models.Concept
 
 	// Get prereqs
-	prereqs, err := getPrerequisites(session, req.ConceptId, req.Depth)
+	prereqs, err := getAllPrerequisites(session, id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	concepts = append(concepts, prereqs...)
-
-	// Get self
-	self, err := getConceptById(session, req.ConceptId)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	concepts = append(concepts, self)
-
-	// Get postreqs
-	postreqs, err := getPostrequisites(session, req.ConceptId, req.Depth)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	concepts = append(concepts, postreqs...)
 
 	res, err := json.Marshal(concepts)
 	if err != nil {
@@ -209,6 +182,41 @@ func GetConceptsAround(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Write(res)
+}
+
+type updateConceptRequest struct {
+	Content string `json:"content"`
+}
+
+func UpdateConcept(w http.ResponseWriter, r *http.Request) {
+	var req updateConceptRequest
+	err := json.NewDecoder(r.Body).Decode(&req)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Get the target id
+	uuid := mux.Vars(r)["uuid"]
+
+	session := driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+	defer session.Close()
+
+	// Update the concept node
+	_, err = session.WriteTransaction(func(transaction neo4j.Transaction) (interface{}, error) {
+		_, err := transaction.Run("MATCH (c:Concept {uuid: $uuid}) SET c.content = $content",
+			map[string]interface{}{"uuid": uuid, "content": req.Content})
+		if err != nil {
+			return nil, err
+		}
+
+		return nil, nil
+	})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
 type createConceptRequest struct {
@@ -284,7 +292,7 @@ func corsMiddleware(next http.Handler) http.Handler {
 }
 
 //---------------------- UTILITIES ------------------------------//
-func getPrerequisites(session neo4j.Session, uuid string, depth int) ([]models.Concept, error) {
+func getAllPrerequisites(session neo4j.Session, uuid string) ([]models.Concept, error) {
 	var concepts []models.Concept
 
 	// Gets all the prerequisites
@@ -302,65 +310,9 @@ func getPrerequisites(session neo4j.Session, uuid string, depth int) ([]models.C
 
 			// Check if prerequisites need to be fetched
 			var prereqs []models.Concept
-			if depth <= 0 {
-				return []models.Concept{}, nil
-			} else {
-				prereqs, err = getPrerequisites(session, node.Props["uuid"].(string), depth-1)
-				concepts = append(concepts, prereqs...)
-				if err != nil {
-					return nil, err
-				}
-			}
+			prereqs, err = getAllPrerequisites(session, node.Props["uuid"].(string))
+			concepts = append(concepts, prereqs...)
 
-			// Generate list of prereq IDs
-			var prereqIds []string
-			for _, prereq := range prereqs {
-				prereqIds = append(prereqIds, prereq.Uuid)
-			}
-
-			c := models.Concept{
-				Uuid:          node.Props["uuid"].(string),
-				Title:         node.Props["title"].(string),
-				Content:       node.Props["content"].(string),
-				Prerequisites: prereqIds,
-			}
-			concepts = append(concepts, c)
-		}
-	}
-
-	return concepts, nil
-}
-
-func getPostrequisites(session neo4j.Session, uuid string, depth int) ([]models.Concept, error) {
-	var concepts []models.Concept
-
-	// Gets all the postrequisites
-	result, err := session.Run("MATCH (c1:Concept)-[r:PREREQ_OF]->(c2:Concept) WHERE c1.uuid = $uuid return c2", map[string]interface{}{
-		"uuid": uuid,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	var record *neo4j.Record
-	for result.NextRecord(&record) {
-		for _, rawNode := range record.Values {
-			node := rawNode.(neo4j.Node)
-
-			// Check if more postrequisites need to be fetched
-			var postreqs []models.Concept
-			if depth <= 0 {
-				return []models.Concept{}, nil
-			} else {
-				postreqs, err = getPostrequisites(session, node.Props["uuid"].(string), depth-1)
-				concepts = append(concepts, postreqs...)
-				if err != nil {
-					return nil, err
-				}
-			}
-
-			// Get the prereqs for the current one
-			prereqs, err := getPrerequisites(session, node.Props["uuid"].(string), 1)
 			if err != nil {
 				return nil, err
 			}
@@ -382,46 +334,4 @@ func getPostrequisites(session neo4j.Session, uuid string, depth int) ([]models.
 	}
 
 	return concepts, nil
-}
-
-func getConceptById(session neo4j.Session, uuid string) (models.Concept, error) {
-	var c models.Concept
-
-	// Gets all the postrequisites
-	result, err := session.Run("MATCH (c:Concept) WHERE c.uuid = $uuid return c", map[string]interface{}{
-		"uuid": uuid,
-	})
-	if err != nil {
-		return models.Concept{}, err
-	}
-
-	var record *neo4j.Record
-	for result.NextRecord(&record) {
-		for _, rawNode := range record.Values {
-			node := rawNode.(neo4j.Node)
-
-			// Get the prereqs for the current one
-			prereqs, err := getPrerequisites(session, node.Props["uuid"].(string), 1)
-			if err != nil {
-				return models.Concept{}, err
-			}
-
-			// Generate list of prereq IDs
-			var prereqIds []string
-			for _, prereq := range prereqs {
-				prereqIds = append(prereqIds, prereq.Uuid)
-			}
-
-			c = models.Concept{
-				Uuid:          node.Props["uuid"].(string),
-				Title:         node.Props["title"].(string),
-				Content:       node.Props["content"].(string),
-				Prerequisites: prereqIds,
-			}
-
-			// Only look at the first response
-			break
-		}
-	}
-	return c, nil
 }
