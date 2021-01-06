@@ -6,7 +6,7 @@
       Save
     </button>
   </div>
-  <div class="flex flex-row mx-8 my-4 border border-gray-200 border-solid max-h-screen rounded">
+  <div class="flex flex-row mx-8 my-4 border border-gray-200 border-solid min-h-screen rounded">
     <textarea id="raw" :value="content" @input="update" class="flex-1 resize-none bg-gray-100 p-8"></textarea>
     <div id="processed" v-html="compiledMarkdown" class="flex-1 p-8 text-left markdown-body"></div>
   </div> 

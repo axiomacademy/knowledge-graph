@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"time"
 
 	"github.com/solderneer/axiom/knowledge-backend/models"
@@ -51,8 +52,8 @@ func main() {
 	r := mux.NewRouter()
 	r.HandleFunc("/", TestHandler).Methods("GET", "OPTIONS")
 	r.HandleFunc("/concept/new", CreateConcept).Methods("POST", "OPTIONS")
-	r.HandleFunc("/concept/update/{uuid}", UpdateConcept).Methods("PUT", "OPTIONS")
-	r.HandleFunc("/concept/all", GetAllConcepts).Methods("GET", "OPTIONS")
+	r.HandleFunc("/concept/update/{id}", UpdateConcept).Methods("PUT", "OPTIONS")
+	r.HandleFunc("/concept/around/{id}", GetConceptsAround).Methods("GET", "OPTIONS")
 	r.HandleFunc("/concept/search", SearchForConcept).Methods("GET", "OPTIONS")
 
 	// Addings the middlewares
@@ -108,8 +109,8 @@ type searchForConceptRequest struct {
 }
 
 type searchForConceptResponse struct {
-	Concept models.Concept `json:"concept"`
-	Score   float64        `json:"score"`
+	Concept models.ConceptNode `json:"concept"`
+	Score   float64            `json:"score"`
 }
 
 func SearchForConcept(w http.ResponseWriter, r *http.Request) {
@@ -134,11 +135,10 @@ func SearchForConcept(w http.ResponseWriter, r *http.Request) {
 	for results.NextRecord(&record) {
 		rawNode, _ := record.Get("node")
 		node := rawNode.(neo4j.Node)
-		concept := models.Concept{
-			Uuid:          node.Props["uuid"].(string),
-			Title:         node.Props["title"].(string),
-			Content:       node.Props["content"].(string),
-			Prerequisites: []string{},
+		concept := models.ConceptNode{
+			Uuid:    node.Props["uuid"].(string),
+			Title:   node.Props["title"].(string),
+			Content: node.Props["content"].(string),
 		}
 		score, _ := record.Get("score")
 		resElem := searchForConceptResponse{
@@ -157,25 +157,93 @@ func SearchForConcept(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func GetAllConcepts(w http.ResponseWriter, r *http.Request) {
+type getConceptsAroundRes struct {
+	Concepts []models.ConceptNode `json:"concepts"`
+	Links    []models.ConceptLink `json:"links"`
+}
 
-	id := "root"
+func GetConceptsAround(w http.ResponseWriter, r *http.Request) {
+
+	id, found := mux.Vars(r)["id"]
+	if !found {
+		http.Error(w, "", http.StatusBadRequest)
+		return
+	}
+
+	rawDepth := r.URL.Query().Get("depth")
+	// print(rawDepth)
+	depth, err := strconv.Atoi(rawDepth)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
 	session := driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
 	defer session.Close()
 
-	var concepts []models.Concept
+	var concepts []models.ConceptNode
+	var links []models.ConceptLink
 
-	// Get prereqs
-	prereqs, err := getAllPrerequisites(session, id)
+	cipher := "MATCH (c1:Concept)-[r:PREREQ_OF*1.." + rawDepth + "]->(c2:Concept) WHERE c1.uuid = $uuid return c1, c2, r"
+
+	fmt.Println(cipher)
+
+	// Gets all the prerequisites
+	result, err := session.Run(cipher, map[string]interface{}{
+		"uuid":   id,
+		"params": map[string]int{"depth": depth},
+	})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
 	}
 
-	concepts = append(concepts, prereqs...)
+	var record *neo4j.Record
+	nodeMap := map[int64]models.ConceptNode{}
+	linkMap := map[int64]models.ConceptLink{}
 
-	res, err := json.Marshal(concepts)
+	for result.NextRecord(&record) {
+		for _, raw := range record.Values {
+			switch v := raw.(type) {
+			case neo4j.Node:
+				if _, ok := nodeMap[v.Id]; ok != true {
+					c := models.ConceptNode{
+						Uuid:    v.Props["uuid"].(string),
+						Title:   v.Props["title"].(string),
+						Content: v.Props["content"].(string),
+					}
+					nodeMap[v.Id] = c
+				}
+			// FOr some reason, relationships don't parse as relationships but ok
+			case []interface{}:
+				for _, interfaceLink := range v {
+					rawLink := interfaceLink.(neo4j.Relationship)
+					if _, ok := linkMap[rawLink.Id]; ok != true {
+						l := models.ConceptLink{
+							StartId: nodeMap[rawLink.StartId].Uuid,
+							EndId:   nodeMap[rawLink.EndId].Uuid,
+						}
+						linkMap[rawLink.Id] = l
+					}
+				}
+			}
+		}
+	}
+
+	// Extract concepts	and links from hashmap to avoid repeat values
+	for _, concept := range nodeMap {
+		concepts = append(concepts, concept)
+	}
+
+	for _, link := range linkMap {
+		links = append(links, link)
+	}
+
+	resStruct := getConceptsAroundRes{
+		Concepts: concepts,
+		Links:    links,
+	}
+
+	res, err := json.Marshal(resStruct)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -198,7 +266,7 @@ func UpdateConcept(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get the target id
-	uuid := mux.Vars(r)["uuid"]
+	id := mux.Vars(r)["id"]
 
 	session := driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	defer session.Close()
@@ -206,7 +274,7 @@ func UpdateConcept(w http.ResponseWriter, r *http.Request) {
 	// Update the concept node
 	_, err = session.WriteTransaction(func(transaction neo4j.Transaction) (interface{}, error) {
 		_, err := transaction.Run("MATCH (c:Concept {uuid: $uuid}) SET c.content = $content",
-			map[string]interface{}{"uuid": uuid, "content": req.Content})
+			map[string]interface{}{"uuid": id, "content": req.Content})
 		if err != nil {
 			return nil, err
 		}
@@ -292,46 +360,3 @@ func corsMiddleware(next http.Handler) http.Handler {
 }
 
 //---------------------- UTILITIES ------------------------------//
-func getAllPrerequisites(session neo4j.Session, uuid string) ([]models.Concept, error) {
-	var concepts []models.Concept
-
-	// Gets all the prerequisites
-	result, err := session.Run("MATCH (c1:Concept)-[r:PREREQ_OF]->(c2:Concept) WHERE c2.uuid = $uuid return c1", map[string]interface{}{
-		"uuid": uuid,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	var record *neo4j.Record
-	for result.NextRecord(&record) {
-		for _, rawNode := range record.Values {
-			node := rawNode.(neo4j.Node)
-
-			// Check if prerequisites need to be fetched
-			var prereqs []models.Concept
-			prereqs, err = getAllPrerequisites(session, node.Props["uuid"].(string))
-			concepts = append(concepts, prereqs...)
-
-			if err != nil {
-				return nil, err
-			}
-
-			// Generate list of prereq IDs
-			var prereqIds []string
-			for _, prereq := range prereqs {
-				prereqIds = append(prereqIds, prereq.Uuid)
-			}
-
-			c := models.Concept{
-				Uuid:          node.Props["uuid"].(string),
-				Title:         node.Props["title"].(string),
-				Content:       node.Props["content"].(string),
-				Prerequisites: prereqIds,
-			}
-			concepts = append(concepts, c)
-		}
-	}
-
-	return concepts, nil
-}
