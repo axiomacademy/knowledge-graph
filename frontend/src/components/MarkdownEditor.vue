@@ -17,6 +17,7 @@ import * as marked from 'marked'
 
 export default {
   name: 'MarkdownEditor',
+  emits: ["update:content", "save"],
   props: {
     title: String,
     content: String,

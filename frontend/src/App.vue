@@ -1,13 +1,17 @@
 <template>
-  <Navbar />
-  <KnowledgeGraph v-if="dataReady" :concepts="this.concepts" v-on:concept-clicked="selectConcept"/>
-  <MarkdownEditor v-if="selectedConcept != null" :title="selectedConcept.title" :content="selectedConcept.content" v-on:update:content="updateContent" v-on:save="saveContent"/>
+  <div>
+    <Navbar />
+    <KnowledgeGraph v-if="dataReady" :graph="this.g" v-on:concept-clicked="selectConcept"/>
+    <MarkdownEditor v-if="selectedConcept != null" :title="selectedConcept.title" :content="selectedConcept.content" v-on:update:content="updateContent" v-on:save="saveContent"/>
+  </div>
 </template>
 
 <script>
 import KnowledgeGraph from './components/KnowledgeGraph.vue'
 import Navbar from './components/Navbar.vue'
 import MarkdownEditor from './components/MarkdownEditor.vue';
+
+import * as dagreD3 from 'dagre-d3'
 
 export default {
   name: 'App',
@@ -18,35 +22,53 @@ export default {
   },
   data() {
     return {
+      g: null,
       baseUrl: 'http://localhost:3000',
       dataReady: false,
-      concepts: [],
       selectedConcept: null
     }
   },
   computed: {
   },
   async mounted() {
-    const newConcepts = await this.getConcepts()
-    this.concepts = newConcepts
-    this.dataReady = true
+    await this.getConcepts()
   },
   methods: {
     updateContent(newContent) {
       this.selectedConcept.content = newContent
     },
     async getConcepts() {
+      this.dataReady = false
       // Go and retrieve the concepts
-      const rawResponse = await fetch(`${this.baseUrl}/concept/all`, {
+      const rawResponse = await fetch(`${this.baseUrl}/concept/around/root?depth=100`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json'
-        }})
+        }}) 
+
+      const res = await rawResponse.json()
+      let graph = new dagreD3.graphlib.Graph()
+      graph.setGraph({rankdir: "LR"})
+      graph.setDefaultEdgeLabel(function() { return {} })
+
+      for(let i=0; i < res.concepts.length; i++) {
+        graph.setNode(res.concepts[i].uuid, { label: res.concepts[i].title, shape: "circle", content: res.concepts[i].content }) 
+      }
       
-      return await rawResponse.json()
+      for(let i=0; i < res.links.length; i++) {
+        graph.setEdge(res.links[i].start_id, res.links[i].end_id) 
+      }
+
+      this.g = graph
+      this.dataReady = true
     },
     selectConcept(uuid) {
-      this.selectedConcept = this.concepts.find(elem => elem.uuid == uuid)
+      const node = this.g.node(uuid)
+      this.selectedConcept = {
+        "uuid": uuid,
+        "title": node.label,
+        "content": node.content
+      }
     },
     async saveContent() {
       // Run the update
@@ -57,14 +79,9 @@ export default {
         },
         body: JSON.stringify({content: this.selectedConcept.content})
       })
+    
+      await this.getConcepts()
       
-      const rawResponse = await fetch(`${this.baseUrl}/concept/all`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json'
-        }})
-      
-      this.concepts = await rawResponse.json()
     }
   },
 }
@@ -73,13 +90,17 @@ export default {
 <style>
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500&family=Roboto:wght@300;400;500&family=Roboto+Mono&display=swap');
 
+:root {
+  --primary-color: #7938D8;
+}
+
 h1, h2, h3, h4, h5, h6 {
   font-family: 'IBM Plex Sans', sans-serif;
-  color: #7938D8;
+  color: var(--primary-color);
 }
 
 .primary-color {
-  background-color: #7938D8;
+  background-color: var(--primary-color);
 }
 
 #app {

@@ -184,7 +184,7 @@ func GetConceptsAround(w http.ResponseWriter, r *http.Request) {
 	var concepts []models.ConceptNode
 	var links []models.ConceptLink
 
-	cipher := "MATCH (c1:Concept)-[r:PREREQ_OF*1.." + rawDepth + "]->(c2:Concept) WHERE c1.uuid = $uuid return c1, c2, r"
+	cipher := "MATCH (c1:Concept)<-[r:PREREQ_OF*1.." + rawDepth + "]->(c2:Concept) WHERE c1.uuid = $uuid return c1, c2, r"
 
 	fmt.Println(cipher)
 
