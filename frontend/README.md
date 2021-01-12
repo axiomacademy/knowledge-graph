@@ -1,4 +1,4 @@
-# knowledge-frontend
+# frontendv2
 
 ## Project setup
 ```

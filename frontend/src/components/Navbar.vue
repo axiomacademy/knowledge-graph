@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-row justify-center">
+  <div class="navbar flex flex-row justify-center">
     <img src="../assets/Logo.png" class="w-24" alt="Axiom Logo"/>
     <div class="flex flex-col justify-center items-start">
       <h1 class="text-5xl">axiom</h1>

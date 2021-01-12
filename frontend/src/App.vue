@@ -3,7 +3,7 @@
     <Navbar />
     <KnowledgeGraph v-if="dataReady" :graph="this.g" v-on:concept-clicked="selectConcept"/>
     <MarkdownEditor v-if="selectedConcept != null" :title="selectedConcept.title" :content="selectedConcept.content" v-on:update:content="updateContent" v-on:save="saveContent"/>
-    <NewConceptModal />
+    <!-- NewConceptModal /-->
   </div>
 </template>
 
@@ -11,7 +11,7 @@
 import KnowledgeGraph from './components/KnowledgeGraph.vue'
 import Navbar from './components/Navbar.vue'
 import MarkdownEditor from './components/MarkdownEditor.vue'
-import NewConceptModal from './components/NewConceptModal.vue'
+// import NewConceptModal from './components/NewConceptModal.vue'
 
 import * as dagreD3 from 'dagre-d3'
 
@@ -21,7 +21,7 @@ export default {
     KnowledgeGraph,
     Navbar,
     MarkdownEditor,
-    NewConceptModal,
+    // NewConceptModal,
   },
   data() {
     return {
@@ -66,6 +66,7 @@ export default {
       this.dataReady = true
     },
     selectConcept(uuid) {
+      console.log("Hello 2")
       const node = this.g.node(uuid)
       this.selectedConcept = {
         "uuid": uuid,

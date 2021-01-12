@@ -1,11 +1,13 @@
 <template>
-  <div class="relative">
-    <div class="flex flex-col items-center">
-      <svg id="knowledge-graph" width="100%"><g></g></svg>
+  <div class="knowledge-graph">
+    <div class="relative">
+      <div class="flex flex-col items-center">
+        <svg id="knowledge-graph" width="100%"><g></g></svg>
+      </div>
+      <button class="primary-color w-10 h-10 mb-2 text-white rounded text-2xl shadow ripple hover:shadow-lg focus:outline-none absolute right-8 bottom-2">+</button>
     </div>
-    <button class="primary-color w-10 h-10 mb-2 text-white rounded text-2xl shadow ripple hover:shadow-lg focus:outline-none absolute right-8 bottom-2">+</button>
+    <hr class="mb-4 mx-8">
   </div>
-  <hr class="mb-4 mx-8">
 </template>
 
 <script>
@@ -14,7 +16,6 @@ import * as d3 from 'd3'
 
 export default {
   name: 'KnowledgeGraph',
-  emits: ["conceptClicked"],
   props: {
     graph: Object
   },
@@ -43,7 +44,8 @@ export default {
       
       // Set up click event
       inner.selectAll("g.node").on("click", function(event, d) {
-        this.$emit('conceptClicked', d)
+        console.log("Hello")
+        this.$emit('concept-clicked', d)
       }.bind(this))
 
       svg.attr("width", this.w)
