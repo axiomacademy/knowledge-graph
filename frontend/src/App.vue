@@ -4,7 +4,14 @@
 
     <v-main>
       <KnowledgeGraph v-if="dataReady" :graph="this.g" v-on:concept-clicked="selectConcept" v-on:create-new="createNew"/>
-      <MarkdownEditor v-if="selectedConcept != null" :title="selectedConcept.title" :content="selectedConcept.content" v-on:update:content="updateContent" v-on:save="saveContent"/>
+      <MarkdownEditor 
+        v-if="selectedConcept != null" 
+        :title="selectedConcept.title" 
+        :content="selectedConcept.content" 
+        v-on:update:content="updateContent" 
+        v-on:save="saveContent" 
+        v-on:delete="deleteConcept"
+      />
 
       <NewConceptModal v-if="showModal" v-on:close-modal="closeModal"/>
       <!-- Loading indicator -->
@@ -62,7 +69,7 @@ export default {
     async getConcepts() {
       this.dataReady = false
       // Go and retrieve the concepts
-      const rawResponse = await fetch(`${this.baseUrl}/concept/around/root?depth=100`, {
+      const rawResponse = await fetch(`${this.baseUrl}/concept/all`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json'
@@ -104,6 +111,17 @@ export default {
     
       await this.getConcepts()
       
+    },
+    async deleteConcept() {
+      // Run the update
+      await fetch(`${this.baseUrl}/concept/delete/${this.selectedConcept.uuid}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        }})
+    
+      await this.getConcepts()
+      this.selectedConcept = null 
     }
   },
 }

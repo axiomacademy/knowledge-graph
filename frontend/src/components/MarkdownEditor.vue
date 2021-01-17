@@ -8,6 +8,7 @@
     <v-row class="mt-6 mb-4 px-3">
       <h1 class="text-h6">Concept Content</h1>
       <v-spacer />
+      <v-btn depressed class="mx-2" @click="onDelete" color="primary">Delete</v-btn>
       <v-btn depressed @click="onSave" color="primary">Save</v-btn>
     </v-row>
     <v-row class="rounded-lg flex-nowrap md-wrapper" no-gutters>
@@ -34,6 +35,7 @@ export default {
   },
   data () {
     return {
+      baseUrl: 'http://localhost:3000',
     }
   },
   computed: {
@@ -48,6 +50,10 @@ export default {
     onSave() {
       console.log("Saving...")
       this.$emit("save", this.input)
+    },
+    onDelete() {
+      console.log("Deleting")
+      this.$emit("delete")
     },
   }
 }

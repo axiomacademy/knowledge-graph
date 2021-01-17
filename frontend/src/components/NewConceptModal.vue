@@ -86,7 +86,7 @@ export default {
       const req = {
         title: this.conceptTitle,
         content: `# ${this.conceptTitle}`,
-        prerequisites: this.select.map(elem => {
+        prerequisites: (this.select == null) ? [] : this.select.map(elem => {
           return elem.uuid
         })
       }

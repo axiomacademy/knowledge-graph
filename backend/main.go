@@ -52,8 +52,10 @@ func main() {
 	r := mux.NewRouter()
 	r.HandleFunc("/", TestHandler).Methods("GET", "OPTIONS")
 	r.HandleFunc("/concept/new", CreateConcept).Methods("POST", "OPTIONS")
+	r.HandleFunc("/concept/all", GetAllConcepts).Methods("GET", "OPTIONS")
 	r.HandleFunc("/concept/update/{id}", UpdateConcept).Methods("PUT", "OPTIONS")
 	r.HandleFunc("/concept/around/{id}", GetConceptsAround).Methods("GET", "OPTIONS")
+	r.HandleFunc("/concept/delete/{id}", DeleteConcept).Methods("DELETE", "OPTIONS")
 	r.HandleFunc("/concept/search", SearchForConcept).Methods("GET", "OPTIONS")
 
 	// Addings the middlewares
@@ -104,32 +106,50 @@ func TestHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("gorilla!\n"))
 }
 
-type searchForConceptRequest struct {
-	QueryString string `json:"query_string"`
+func DeleteConcept(w http.ResponseWriter, r *http.Request) {
+	id, found := mux.Vars(r)["id"]
+	if !found {
+		http.Error(w, "", http.StatusBadRequest)
+		return
+	}
+
+	session := driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+	defer session.Close()
+
+	// Update the concept node
+	_, err := session.WriteTransaction(func(transaction neo4j.Transaction) (interface{}, error) {
+		_, err := transaction.Run("MATCH (c:Concept {uuid: $uuid}) DETACH DELETE c",
+			map[string]interface{}{"uuid": id})
+		if err != nil {
+			return nil, err
+		}
+
+		return nil, nil
+	})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
 type searchForConceptResponse struct {
-	Concept models.ConceptNode `json:"concept"`
-	Score   float64            `json:"score"`
+	Concepts []models.ConceptNode `json:"concepts"`
 }
 
 func SearchForConcept(w http.ResponseWriter, r *http.Request) {
-	var req searchForConceptRequest
-	var resArray []searchForConceptResponse
-	err := json.NewDecoder(r.Body).Decode(&req)
-
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+	rawQuery := r.URL.Query().Get("query")
 
 	session := driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
 	defer session.Close()
 
-	// var concepts []models.Concept
+	var concepts []models.ConceptNode
 
 	results, err := session.Run("CALL db.index.fulltext.queryNodes($querytype, $query) YIELD node, score RETURN node, score",
-		map[string]interface{}{"querytype": "conceptTitles", "query": req.QueryString})
+		map[string]interface{}{"querytype": "conceptTitles", "query": rawQuery})
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 
 	var record *neo4j.Record
 	for results.NextRecord(&record) {
@@ -140,24 +160,22 @@ func SearchForConcept(w http.ResponseWriter, r *http.Request) {
 			Title:   node.Props["title"].(string),
 			Content: node.Props["content"].(string),
 		}
-		score, _ := record.Get("score")
-		resElem := searchForConceptResponse{
-			Concept: concept,
-			Score:   score.(float64),
-		}
 
-		resArray = append(resArray, resElem)
-		res, err := json.Marshal(resArray)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		w.Write(res)
+		concepts = append(concepts, concept)
 	}
+
+	rawRes := searchForConceptResponse{Concepts: concepts}
+
+	res, err := json.Marshal(rawRes)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Write(res)
 }
 
-type getConceptsAroundRes struct {
+type getConceptsRes struct {
 	Concepts []models.ConceptNode `json:"concepts"`
 	Links    []models.ConceptLink `json:"links"`
 }
@@ -238,7 +256,88 @@ func GetConceptsAround(w http.ResponseWriter, r *http.Request) {
 		links = append(links, link)
 	}
 
-	resStruct := getConceptsAroundRes{
+	resStruct := getConceptsRes{
+		Concepts: concepts,
+		Links:    links,
+	}
+
+	res, err := json.Marshal(resStruct)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Write(res)
+}
+
+func GetAllConcepts(w http.ResponseWriter, r *http.Request) {
+	session := driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
+	defer session.Close()
+
+	var concepts []models.ConceptNode
+	var links []models.ConceptLink
+
+	cipher := "MATCH (c:Concept) RETURN c"
+
+	fmt.Println(cipher)
+
+	// Gets all the prerequisites
+	result, err := session.Run(cipher, map[string]interface{}{})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
+	var record *neo4j.Record
+	nodeMap := map[int64]models.ConceptNode{}
+	linkMap := map[int64]models.ConceptLink{}
+
+	for result.NextRecord(&record) {
+		for _, raw := range record.Values {
+			v := raw.(neo4j.Node)
+			if _, ok := nodeMap[v.Id]; ok != true {
+				c := models.ConceptNode{
+					Uuid:    v.Props["uuid"].(string),
+					Title:   v.Props["title"].(string),
+					Content: v.Props["content"].(string),
+				}
+				nodeMap[v.Id] = c
+			}
+		}
+	}
+
+	cipher = "MATCH (c:Concept)-[r:PREREQ_OF]->(c1:Concept) RETURN r"
+
+	fmt.Println(cipher)
+
+	// Gets all links
+	result, err = session.Run(cipher, map[string]interface{}{})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
+	for result.NextRecord(&record) {
+		for _, raw := range record.Values {
+			v := raw.(neo4j.Relationship)
+			if _, ok := linkMap[v.Id]; ok != true {
+				l := models.ConceptLink{
+					StartId: nodeMap[v.StartId].Uuid,
+					EndId:   nodeMap[v.EndId].Uuid,
+				}
+				linkMap[v.Id] = l
+			}
+		}
+	}
+
+	// Extract concepts	and links from hashmap to avoid repeat values
+	for _, concept := range nodeMap {
+		concepts = append(concepts, concept)
+	}
+
+	for _, link := range linkMap {
+		links = append(links, link)
+	}
+
+	resStruct := getConceptsRes{
 		Concepts: concepts,
 		Links:    links,
 	}
@@ -266,7 +365,11 @@ func UpdateConcept(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get the target id
-	id := mux.Vars(r)["id"]
+	id, found := mux.Vars(r)["id"]
+	if !found {
+		http.Error(w, "", http.StatusBadRequest)
+		return
+	}
 
 	session := driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	defer session.Close()
