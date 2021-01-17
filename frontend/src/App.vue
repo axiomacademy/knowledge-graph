@@ -3,12 +3,12 @@
     <Navbar />
 
     <v-main>
-      <HelloWorld />
-      <KnowledgeGraph v-if="dataReady" :graph="this.g" v-on:concept-clicked="selectConcept"/>
+      <KnowledgeGraph v-if="dataReady" :graph="this.g" v-on:concept-clicked="selectConcept" v-on:create-new="createNew"/>
       <MarkdownEditor v-if="selectedConcept != null" :title="selectedConcept.title" :content="selectedConcept.content" v-on:update:content="updateContent" v-on:save="saveContent"/>
 
+      <NewConceptModal v-if="showModal" v-on:close-modal="closeModal"/>
       <!-- Loading indicator -->
-      <v-overlay v-if="!dataReady" :value="overlay">
+      <v-overlay v-if="!dataReady">
         <v-progress-circular
           indeterminate
           size="64"
@@ -22,6 +22,7 @@
 import KnowledgeGraph from './components/KnowledgeGraph.vue'
 import Navbar from './components/Navbar.vue'
 import MarkdownEditor from './components/MarkdownEditor.vue';
+import NewConceptModal from './components/NewConceptModal.vue';
 
 import * as dagreD3 from 'dagre-d3'
 
@@ -31,13 +32,15 @@ export default {
     KnowledgeGraph,
     Navbar,
     MarkdownEditor,
+    NewConceptModal,
   },
   data() {
     return {
       g: null,
       baseUrl: 'http://localhost:3000',
       dataReady: false,
-      selectedConcept: null
+      selectedConcept: null,
+      showModal: false,
     }
   },
   computed: {
@@ -46,6 +49,13 @@ export default {
     await this.getConcepts()
   },
   methods: {
+    createNew() {
+      this.showModal = true
+    },
+    closeModal() {
+      this.showModal = false
+      this.getConcepts()
+    },
     updateContent(newContent) {
       this.selectedConcept.content = newContent
     },

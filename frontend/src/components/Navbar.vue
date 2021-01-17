@@ -11,7 +11,7 @@
     ></v-img>
 
     <v-spacer></v-spacer>
-    <v-appbar-title class="text-h3" style="color: #7938D8;">axiom.</v-appbar-title>
+    <h1 class="text-h3" style="color: #7938D8;">axiom.</h1>
     <v-spacer></v-spacer>
   </v-app-bar>
 </template>

@@ -6,7 +6,9 @@
       dark
       absolute
       color="primary"
-      style="bottom: 32px; right: 32px;">
+      style="bottom: 32px; right: 32px;"
+      @click="createNew"
+      >
       <v-icon dark>
         mdi-plus
       </v-icon>
@@ -34,6 +36,9 @@ export default {
     this.constructGraph()
   },
   methods: {
+    createNew() {
+      this.$emit("create-new")
+    },
     constructGraph() {
       let svg = d3.select("svg"), inner = svg.select("g");
       
