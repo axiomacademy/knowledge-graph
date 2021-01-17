@@ -1,17 +1,25 @@
 <template>
-  <div class="md-editor px-8">
-    <h1 class="text-3xl font-medium pt-2 text-black">{{ title }}</h1>
-    <div class="flex flex-row pt-2 items-center">
-      <h1 class="text-xl font-medium mr-auto text-gray-900">Concept Content</h1>
-      <button @click="onSave" class="inline-block px-6 py-2 text-xs font-medium leading-6 text-center text-white uppercase transition primary-color rounded shadow ripple hover:shadow-lg focus:outline-none">
-        Save
-      </button>
-    </div>
-    <div class="flex flex-row my-4 border border-gray-200 border-solid min-h-screen rounded">
-      <textarea id="raw" :value="content" @input="update" class="flex-1 resize-none bg-gray-100 p-8"></textarea>
-      <div id="processed" v-html="compiledMarkdown" class="flex-1 p-8 text-left markdown-body"></div>
-    </div> 
-  </div>
+  <v-container class="md-editor">
+    <v-row class="mt-4">
+      <v-col cols="12">
+        <h1 class="text-h4">{{ title }}</h1>
+      </v-col>
+    </v-row>
+    <v-row class="mt-6 mb-4 px-3">
+      <h1 class="text-h6">Concept Content</h1>
+      <v-spacer />
+      <v-btn depressed @click="onSave" color="primary">Save</v-btn>
+    </v-row>
+    <v-row class="rounded-lg flex-nowrap md-wrapper" no-gutters>
+      <v-col cols="6" class="">
+        <textarea id="raw" :value="content" @input="update" class="grey lighten-4 pa-6" style="width: 100%; height: 100%; resize: none;"></textarea>
+      </v-col>
+      <v-divider vertical></v-divider>
+      <v-col cols="6">
+        <div id="processed" v-html="compiledMarkdown" class="pa-6 markdown-body" style="min-height: 80vh;"></div>
+      </v-col>
+    </v-row>
+  </v-container>
 </template>
 
 <script>
@@ -48,5 +56,12 @@ export default {
 <style>
 #raw {
   font-family: 'Roboto Mono', monospace;
+}
+
+.md-wrapper {
+  border-radius: 4px;
+  border-width: thin;
+  border-style: solid;
+  border-color: rgba(0, 0, 0, 0.12);
 }
 </style>

@@ -1,11 +1,19 @@
 <template>
-  <div class="navbar flex flex-row justify-center">
-    <img src="../assets/Logo.png" class="w-24" alt="Axiom Logo"/>
-    <div class="flex flex-col justify-center items-start">
-      <h1 class="text-5xl">axiom</h1>
-      <h2 class="text-xl">knowledge platform</h2>
-    </div>
-  </div>
+  <v-app-bar 
+    absolute
+    elevation="0"
+    color="white"
+    class="p-4"> 
+    <v-img
+      src="../assets/Logo.png"
+      max-height="60"
+      max-width="60"
+    ></v-img>
+
+    <v-spacer></v-spacer>
+    <v-appbar-title class="text-h3" style="color: #7938D8;">axiom.</v-appbar-title>
+    <v-spacer></v-spacer>
+  </v-app-bar>
 </template>
 
 <script>

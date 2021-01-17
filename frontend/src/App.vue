@@ -1,17 +1,27 @@
 <template>
-  <div>
+  <v-app>
     <Navbar />
-    <KnowledgeGraph v-if="dataReady" :graph="this.g" v-on:concept-clicked="selectConcept"/>
-    <MarkdownEditor v-if="selectedConcept != null" :title="selectedConcept.title" :content="selectedConcept.content" v-on:update:content="updateContent" v-on:save="saveContent"/>
-    <!-- NewConceptModal /-->
-  </div>
+
+    <v-main>
+      <HelloWorld />
+      <KnowledgeGraph v-if="dataReady" :graph="this.g" v-on:concept-clicked="selectConcept"/>
+      <MarkdownEditor v-if="selectedConcept != null" :title="selectedConcept.title" :content="selectedConcept.content" v-on:update:content="updateContent" v-on:save="saveContent"/>
+
+      <!-- Loading indicator -->
+      <v-overlay v-if="!dataReady" :value="overlay">
+        <v-progress-circular
+          indeterminate
+          size="64"
+        ></v-progress-circular>
+      </v-overlay>
+    </v-main>
+  </v-app>
 </template>
 
 <script>
 import KnowledgeGraph from './components/KnowledgeGraph.vue'
 import Navbar from './components/Navbar.vue'
-import MarkdownEditor from './components/MarkdownEditor.vue'
-// import NewConceptModal from './components/NewConceptModal.vue'
+import MarkdownEditor from './components/MarkdownEditor.vue';
 
 import * as dagreD3 from 'dagre-d3'
 
@@ -21,7 +31,6 @@ export default {
     KnowledgeGraph,
     Navbar,
     MarkdownEditor,
-    // NewConceptModal,
   },
   data() {
     return {
@@ -66,7 +75,6 @@ export default {
       this.dataReady = true
     },
     selectConcept(uuid) {
-      console.log("Hello 2")
       const node = this.g.node(uuid)
       this.selectedConcept = {
         "uuid": uuid,
@@ -91,27 +99,16 @@ export default {
 }
 </script>
 
-<style>
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500&family=Roboto:wght@300;400;500&family=Roboto+Mono&display=swap');
+<style lang="scss">
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500&family=Roboto:wght@300;400;500&display=swap');
 
-:root {
-  --primary-color: #7938D8;
-}
+$body-font-family: 'Roboto';
+$title-font: 'IBM Plex Sans';
 
-h1, h2, h3, h4, h5, h6 {
-  font-family: 'IBM Plex Sans', sans-serif;
-  color: var(--primary-color);
-}
-
-.primary-color {
-  background-color: var(--primary-color);
-}
-
-#app {
-  font-family: 'Roboto', sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #2c3e50;
+.v-application {
+  font-family: $body-font-family, sans-serif !important;
+  .text-h1, .text-h2, .text-h3 { // To pin point specific classes of some components
+       font-family: $title-font, sans-serif !important;
+  }
 }
 </style>

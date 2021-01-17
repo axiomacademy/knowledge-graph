@@ -1,12 +1,17 @@
 <template>
-  <div class="knowledge-graph">
-    <div class="relative">
-      <div class="flex flex-col items-center">
-        <svg id="knowledge-graph" width="100%"><g></g></svg>
-      </div>
-      <button class="primary-color w-10 h-10 mb-2 text-white rounded text-2xl shadow ripple hover:shadow-lg focus:outline-none absolute right-8 bottom-2">+</button>
-    </div>
-    <hr class="mb-4 mx-8">
+  <div class="knowledge-graph" style="position: relative;">
+    <svg width="100%"><g></g></svg>
+    <v-btn
+      fab
+      dark
+      absolute
+      color="primary"
+      style="bottom: 32px; right: 32px;">
+      <v-icon dark>
+        mdi-plus
+      </v-icon>
+    </v-btn>
+    <v-divider class="mx-8"></v-divider>
   </div>
 </template>
 
@@ -63,7 +68,7 @@ export default {
 .node circle,
 .node ellipse {
   stroke: none;
-  fill: var(--primary-color);
+  fill: #7938D8;
   stroke-width: 1px;
   height: 50;
   width: 50;
