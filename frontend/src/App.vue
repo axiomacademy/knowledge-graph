@@ -80,12 +80,16 @@ export default {
       graph.setGraph({rankdir: "LR"})
       graph.setDefaultEdgeLabel(function() { return {} })
 
-      for(let i=0; i < res.concepts.length; i++) {
-        graph.setNode(res.concepts[i].uuid, { label: res.concepts[i].title, shape: "circle", content: res.concepts[i].content }) 
+      if(res.concepts != null) {
+        for(let i=0; i < res.concepts.length; i++) {
+          graph.setNode(res.concepts[i].uuid, { label: res.concepts[i].title, shape: "circle", content: res.concepts[i].content }) 
+        }
       }
       
-      for(let i=0; i < res.links.length; i++) {
-        graph.setEdge(res.links[i].start_id, res.links[i].end_id) 
+      if(res.links != null) {
+        for(let i=0; i < res.links.length; i++) {
+          graph.setEdge(res.links[i].start_id, res.links[i].end_id) 
+        }
       }
 
       this.g = graph

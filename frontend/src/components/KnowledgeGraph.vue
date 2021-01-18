@@ -62,7 +62,8 @@ export default {
       svg.attr("height", this.h * 0.8)  
 
       var initialScale = 1.0
-      svg.call(zoom.transform, d3.zoomIdentity.translate((svg.attr("width") - this.graph.graph().width * initialScale) / 2, 20).scale(initialScale))
+      svg.call(zoom.transform, d3.zoomIdentity.translate((svg.attr("width") - this.graph.graph().width * initialScale) / 2,
+        (svg.attr("height") - this.graph.graph().height * initialScale) / 2).scale(initialScale))
     }
   }
 }
