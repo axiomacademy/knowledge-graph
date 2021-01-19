@@ -22,7 +22,7 @@ import (
 // Global handles
 var driver neo4j.Driver
 
-var DB_URL = "bolt://localhost:7687"
+var DB_URL string
 var DB_USERNAME = "neo4j"
 var DB_PASSWORD = "axiom"
 
@@ -31,6 +31,11 @@ func main() {
 	var wait time.Duration
 	flag.DurationVar(&wait, "graceful-timeout", time.Second*15, "the duration for which the server gracefully wait for existing connections to finish - e.g. 15s or 1m")
 	flag.Parse()
+
+	// Get environmental variables
+	DB_URL = os.Getenv("NEO4J_URL")
+
+	fmt.Println(DB_URL)
 
 	// Setting up neo4j
 	var err error

@@ -8,8 +8,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main .
 
 ######## Start a new stage from scratch #######
 FROM alpine:3.11
-RUN apk --no-cache add ca-certificates
 WORKDIR /root/
 COPY --from=builder /app/main .
-EXPOSE 8080
-CMD ["./main"]
+EXPOSE 3000
+CMD ["sh", "-c", "'sleep 20 && ./main'"]

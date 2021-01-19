@@ -44,7 +44,7 @@ export default {
   data() {
     return {
       g: null,
-      baseUrl: 'http://localhost:3000',
+      baseUrl: 'https://admin-beta.axiom.academy/api/v1',
       dataReady: false,
       selectedConcept: null,
       showModal: false,

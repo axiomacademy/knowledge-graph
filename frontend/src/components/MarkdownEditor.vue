@@ -35,7 +35,7 @@ export default {
   },
   data () {
     return {
-      baseUrl: 'http://localhost:3000',
+      baseUrl: 'https://admin-beta.axiom.academy/api/v1',
     }
   },
   computed: {

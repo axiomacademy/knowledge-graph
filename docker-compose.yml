@@ -1,0 +1,39 @@
+version: "3.1"
+services:
+  knowledge-frontend:
+    build: ./frontend
+    restart: unless-stopped
+    labels:
+      - traefik.enable=true
+      - traefik.frontend.rule=Host:admin-beta.axiom.academy
+      - traefik.port=80
+    networks:
+      - web
+      - default
+  knowledge-backend:
+    build: ./backend
+    restart: unless-stopped
+    command: sh -c 'sleep 20 && ./main'
+    ports:
+      - "3000:3000"
+    environment:
+      - NEO4J_URL=${NEO4J_URL}
+    labels:
+      - traefik.enable=true
+      - "traefik.frontend.rule=Host:admin-beta.axiom.academy;PathPrefixStrip:/api/v1/"
+      - traefik.port=3000
+    networks:
+      - web
+      - default
+  graphdb:
+    image: neo4j:4.2
+    environment:
+      - NEO4J_AUTH=none
+    volumes:
+      - ./data:/data
+    networks:
+      - default
+
+networks:
+  web:
+    external: true

@@ -62,7 +62,7 @@ export default {
     return {
       isLoading: false,
       prereqs: [],
-      baseUrl: 'http://localhost:3000',
+      baseUrl: 'https://admin-beta.axiom.academy/api/v1',
       select: null,
       search: null,
       conceptTitle: "",
