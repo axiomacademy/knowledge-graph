@@ -1,7 +1,5 @@
 <template>
   <v-app>
-    <Navbar />
-
     <v-main>
       <KnowledgeGraph v-if="dataReady" :graph="this.g" v-on:concept-clicked="selectConcept" v-on:create-new="createNew"/>
       <MarkdownEditor 
@@ -27,7 +25,6 @@
 
 <script>
 import KnowledgeGraph from '../components/KnowledgeGraph.vue'
-import Navbar from '../components/Navbar.vue'
 import MarkdownEditor from '../components/MarkdownEditor.vue';
 import NewConceptModal from '../components/NewConceptModal.vue';
 
@@ -36,10 +33,9 @@ import { getAllConcepts, updateConcept, deleteConcept } from '../services/Concep
 import * as dagreD3 from 'dagre-d3'
 
 export default {
-  name: 'App',
+  name: 'Admin',
   components: {
     KnowledgeGraph,
-    Navbar,
     MarkdownEditor,
     NewConceptModal,
   },
