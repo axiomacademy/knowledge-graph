@@ -56,13 +56,14 @@
 </template>
 
 <script>
+import { createConcept, searchForConceptByTitle } from '../services/ConceptService'
+
 export default {
   name: 'NewConceptModal',
   data() {
     return {
       isLoading: false,
       prereqs: [],
-      baseUrl: 'https://admin-beta.axiom.academy/api/v1',
       select: null,
       search: null,
       conceptTitle: "",
@@ -83,21 +84,9 @@ export default {
     async createConcept() {
       this.creating = true;
 
-      const req = {
-        title: this.conceptTitle,
-        content: `# ${this.conceptTitle}`,
-        prerequisites: (this.select == null) ? [] : this.select.map(elem => {
-          return elem.uuid
-        })
-      }
-
-      await fetch(`${this.baseUrl}/concept/new`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(req)
-      })
+      await createConcept(this.conceptTitle, `# ${this.conceptTitle}`, (this.select == null) ? [] : this.select.map(elem => {
+        return elem.uuid
+      }))
 
       this.$emit("close-modal")
       this.creating = false
@@ -110,11 +99,8 @@ export default {
 
       this.isLoading = true
 
-      const rawResponse = await fetch(`${this.baseUrl}/concept/search?` + new URLSearchParams({query: val}).toString(), {
-        method: 'GET'})
-
       try {
-        const res = await rawResponse.json()
+        const res = await searchForConceptByTitle(val)
         this.prereqs = (res.concepts == null) ? [] : res.concepts
         this.isLoading = false
       } catch(e) {

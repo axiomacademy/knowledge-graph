@@ -26,12 +26,12 @@
 </template>
 
 <script>
-import KnowledgeGraph from './components/KnowledgeGraph.vue'
-import Navbar from './components/Navbar.vue'
-import MarkdownEditor from './components/MarkdownEditor.vue';
-import NewConceptModal from './components/NewConceptModal.vue';
+import KnowledgeGraph from '../components/KnowledgeGraph.vue'
+import Navbar from '../components/Navbar.vue'
+import MarkdownEditor from '../components/MarkdownEditor.vue';
+import NewConceptModal from '../components/NewConceptModal.vue';
 
-import { getAllConcepts, updateConcept, deleteConcept } from './services/ConceptService'
+import { getAllConcepts, updateConcept, deleteConcept } from '../services/ConceptService'
 
 import * as dagreD3 from 'dagre-d3'
 
