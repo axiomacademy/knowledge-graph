@@ -1,19 +1,7 @@
 <template>
   <div class="knowledge-graph" style="position: relative;">
     <svg width="100%"><g></g></svg>
-    <v-btn
-      fab
-      dark
-      absolute
-      color="primary"
-      style="bottom: 32px; right: 32px;"
-      @click="createNew"
-      >
-      <v-icon dark>
-        mdi-plus
-      </v-icon>
-    </v-btn>
-    <v-divider class="mx-8"></v-divider>
+    <slot></slot>
   </div>
 </template>
 
@@ -24,7 +12,9 @@ import * as d3 from 'd3'
 export default {
   name: 'KnowledgeGraph',
   props: {
-    graph: Object
+    graph: Object,
+    width: Number,
+    height: Number,
   },
   data() {
     return {
@@ -36,9 +26,6 @@ export default {
     this.constructGraph()
   },
   methods: {
-    createNew() {
-      this.$emit("create-new")
-    },
     constructGraph() {
       let svg = d3.select("svg"), inner = svg.select("g");
       
@@ -58,8 +45,8 @@ export default {
         this.$emit('concept-clicked', d)
       }.bind(this))
 
-      svg.attr("width", this.w)
-      svg.attr("height", this.h * 0.8)  
+      svg.attr("width", this.w * this.width)
+      svg.attr("height", this.h * this.height - 80)  
 
       var initialScale = 1.0
       svg.call(zoom.transform, d3.zoomIdentity.translate((svg.attr("width") - this.graph.graph().width * initialScale) / 2,
