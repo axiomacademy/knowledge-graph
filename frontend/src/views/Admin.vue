@@ -1,9 +1,21 @@
 <template>
   <v-app>
-    <Navbar />
-
     <v-main>
-      <KnowledgeGraph v-if="dataReady" :graph="this.g" v-on:concept-clicked="selectConcept" v-on:create-new="createNew"/>
+      <KnowledgeGraph :width="1.0" :height="0.8" v-if="dataReady" :graph="this.g" v-on:concept-clicked="selectConcept">
+        <!-- Modal popup button for concept creation -->
+        <v-btn
+          fab
+          dark
+          absolute
+          color="primary"
+          style="bottom: 32px; right: 32px;"
+          @click="createNew"
+          >
+          <v-icon dark>
+            mdi-plus
+          </v-icon>
+        </v-btn>
+      </KnowledgeGraph>
       <MarkdownEditor 
         v-if="selectedConcept != null" 
         :title="selectedConcept.title" 
@@ -12,6 +24,8 @@
         v-on:save="saveContent" 
         v-on:delete="deleteConcept"
       />
+    
+      <v-divider class="mx-8"></v-divider>
 
       <NewConceptModal v-if="showModal" v-on:close-modal="closeModal"/>
       <!-- Loading indicator -->
@@ -27,7 +41,6 @@
 
 <script>
 import KnowledgeGraph from '../components/KnowledgeGraph.vue'
-import Navbar from '../components/Navbar.vue'
 import MarkdownEditor from '../components/MarkdownEditor.vue';
 import NewConceptModal from '../components/NewConceptModal.vue';
 
@@ -36,10 +49,9 @@ import { getAllConcepts, updateConcept, deleteConcept } from '../services/Concep
 import * as dagreD3 from 'dagre-d3'
 
 export default {
-  name: 'App',
+  name: 'Admin',
   components: {
     KnowledgeGraph,
-    Navbar,
     MarkdownEditor,
     NewConceptModal,
   },
